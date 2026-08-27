@@ -1,0 +1,59 @@
+# DocuFlow Reverb WebSocket Server Dockerfile
+FROM php:8.2-cli-alpine
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    libzip-dev \
+    zip \
+    unzip \
+    oniguruma-dev \
+    postgresql-dev \
+    linux-headers \
+    $PHPIZE_DEPS
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo_pgsql \
+    mbstring \
+    zip \
+    bcmath \
+    pcntl \
+    opcache
+
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Copy application source
+COPY . .
+
+# Generate application key and optimize
+RUN php artisan key:generate --force && \
+    php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache
+
+# Create non-root user
+RUN addgroup -g 1000 -S appgroup && \
+    adduser -u 1000 -S appuser -G appgroup
+
+# Copy reverb config
+COPY config/reverb.php config/reverb.php
+
+USER appuser
+
+EXPOSE 8080
+
+CMD ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]

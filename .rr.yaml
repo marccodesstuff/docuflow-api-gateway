@@ -1,0 +1,34 @@
+# RoadRunner configuration for gRPC workers
+# docuflow-api-gateway/.rr.yaml
+
+version: "3"
+
+server:
+  command: "php artisan roadrunner:worker"
+  env:
+    - APP_RUNTIME=RoadRunner
+
+grpc:
+  listen: ":9091"
+  proto:
+    - "proto/docuflow/v1/document.proto"
+  workers:
+    pool:
+      num_workers: 4
+      max_jobs: 1000
+      allocate_timeout: 60s
+      destroy_timeout: 60s
+
+http:
+  address: ":8000"
+  workers:
+    pool:
+      num_workers: 8
+      max_jobs: 1000
+      allocate_timeout: 60s
+      destroy_timeout: 60s
+
+logs:
+  level: "debug"
+  encoding: "json"
+  output: "stdout"
